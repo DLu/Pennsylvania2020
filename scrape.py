@@ -70,4 +70,3 @@ def scrape():
             with open(parsed_filename, 'w') as f:
                 out = csv.writer(f)
                 out.writerows(results)
-scrape()
