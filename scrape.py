@@ -32,10 +32,8 @@ def parseFeed(xml_doc):
         yield office, date, parseHtmlResults(description)
 
 
-BASE_URL = 'https://electionreturns.pa.gov/electionFeed.aspx?ID='
-REPORTS = [
-    ('Primary', 25)
-]
+BASE_URL = 'https://electionreturns.pa.gov/electionFeed.aspx?ID=31'
+
 RAW_DATA = pathlib.Path('raw_data')
 PARSED_DATA = pathlib.Path('data')
 
@@ -43,30 +41,23 @@ def scrape():
     RAW_DATA.mkdir(exist_ok=True)
     PARSED_DATA.mkdir(exist_ok=True)
 
-    for report_name, feed_id in REPORTS:
-        raw_folder = RAW_DATA / report_name
-        report_folder = PARSED_DATA / report_name
-        raw_folder.mkdir(exist_ok=True)
-        report_folder.mkdir(exist_ok=True)
+    res = requests.get(BASE_URL)
+    s = res.content.decode()
+    xml_doc = parseString(s)
+    last_build_date = getText(xml_doc, 'lastBuildDate')
 
-        url = BASE_URL + str(feed_id)
-        res = requests.get(url)
-        s = res.content.decode()
-        xml_doc = parseString(s)
-        last_build_date = getText(xml_doc, 'lastBuildDate')
+    raw_filename = RAW_DATA / (last_build_date + '.csv')
+    if not raw_filename.exists():
+        with open(raw_filename, 'w') as f:
+            f.write(s)
 
-        raw_filename = raw_folder / (last_build_date + '.csv')
-        if not raw_filename.exists():
-            with open(raw_filename, 'w') as f:
-                f.write(s)
+    for office, date, results in parseFeed(xml_doc):
+        office_folder = PARSED_DATA / office
+        office_folder.mkdir(exist_ok=True)
+        parsed_filename = office_folder / (date + '.csv')
+        if parsed_filename.exists():
+            continue
 
-        for office, date, results in parseFeed(xml_doc):
-            office_folder = report_folder / office
-            office_folder.mkdir(exist_ok=True)
-            parsed_filename = office_folder / (date + '.csv')
-            if parsed_filename.exists():
-                continue
-
-            with open(parsed_filename, 'w') as f:
-                out = csv.writer(f)
-                out.writerows(results)
+        with open(parsed_filename, 'w') as f:
+            out = csv.writer(f)
+            out.writerows(results)
