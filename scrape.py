@@ -58,6 +58,13 @@ def scrape():
         if parsed_filename.exists():
             continue
 
+        other_existing = sorted(office_folder.glob('*.csv'))
+        if other_existing:
+            previous = other_existing[-1]
+            previous_data = list(csv.reader(open(previous)))
+            if previous_data == results:
+                continue
+
         with open(parsed_filename, 'w') as f:
             out = csv.writer(f)
             out.writerows(results)
